@@ -4,20 +4,23 @@ const { ethers } = require('ethers');
 const app = express();
 
 app.use(express.json());
-app.use(express.static('.')); // Serves index.html
 
-// PRIVATE KEY of the authorised signer account (Set in .env in production)
-const SIGNER_PRIVATE_KEY = "0xYOUR_SIGNER_PRIVATE_KEY_HERE"; 
-const CONTRACT_ADDRESS = "0xYOUR_DEPLOYED_CONTRACT_ADDRESS";
+// Set your backend wallet private key in Vercel Environment Variables
+const SIGNER_PRIVATE_KEY = process.env.SIGNER_PRIVATE_KEY || "0xYOUR_SIGNER_PRIVATE_KEY_HERE"; 
+const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || "0xYOUR_DEPLOYED_CONTRACT_ADDRESS";
 const CHAIN_ID = 1; // 1 for Ethereum Mainnet, 11155111 for Sepolia
-
-const wallet = new ethers.Wallet(SIGNER_PRIVATE_KEY);
 
 app.post('/api/get-mint-signature', async (req, res) => {
     try {
         const { to, handle, archetype, tokenURI, nonce } = req.body;
 
-        // EIP-712 Domain Separator Definition
+        if (!to || !handle || !archetype) {
+            return res.status(400).json({ error: "Missing required card fields." });
+        }
+
+        const wallet = new ethers.Wallet(SIGNER_PRIVATE_KEY);
+
+        // EIP-712 Domain Separator
         const domain = {
             name: "TrenchIdentity",
             version: "1",
@@ -25,7 +28,7 @@ app.post('/api/get-mint-signature', async (req, res) => {
             verifyingContract: CONTRACT_ADDRESS
         };
 
-        // EIP-712 Struct Type Definition
+        // EIP-712 Struct Types
         const types = {
             NFTCard: [
                 { name: "to", type: "address" },
@@ -38,16 +41,15 @@ app.post('/api/get-mint-signature', async (req, res) => {
 
         const value = { to, handle, archetype, tokenURI, nonce };
 
-        // Sign typed EIP-712 data off-chain
+        // Generate cryptographic signature
         const signature = await wallet.signTypedData(domain, types, value);
 
         res.json({ signature, nonce });
     } catch (err) {
-        console.error(err);
+        console.error("Signature Error:", err);
         res.status(500).json({ error: "Failed to generate EIP-712 signature" });
     }
 });
 
-app.listen(3000, () => {
-    console.log('Trench Identity Server running at http://localhost:3000');
-});
+// Export app for Vercel Serverless Function engine
+module.exports = app;
