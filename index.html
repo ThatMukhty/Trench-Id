@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TRENCH // Identity Card Generator & NFT Mint</title>
+    <!-- Tailwind CSS (Standalone Engine for Browser Environments) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Ethers v6 & html2canvas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Space+Grotesk:wght@700;900&display=swap');
+
+        body {
+            background-color: #08080c;
+            color: #e2e8f0;
+            font-family: 'Fira Code', monospace;
+        }
+        .font-header { font-family: 'Space Grotesk', sans-serif; }
+        .card-frame {
+            background: linear-gradient(135deg, #12131a 0%, #090a0f 100%);
+            border: 2px solid #2a2d3d;
+            box-shadow: 0 0 35px rgba(204, 255, 0, 0.05), inset 0 0 15px rgba(255, 255, 255, 0.02);
+        }
+        .accent-neon { color: #ccff00; }
+        .bg-neon { background-color: #ccff00; }
+        .border-neon { border-color: #ccff00; }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8 flex flex-col items-center">
+
+    <!-- Header -->
+    <header class="w-full max-w-6xl flex justify-between items-center mb-8 border-b border-gray-800 pb-4">
+        <div>
+            <h1 class="font-header text-2xl font-black tracking-wider text-white">TRENCH <span class="accent-neon">//</span> ID</h1>
+            <p class="text-xs text-gray-500">DISCOVER YOUR CRYPTO IDENTITY</p>
+        </div>
+        <button id="connectWalletBtn" onclick="connectWallet()" class="border border-neon text-neon px-4 py-2 text-xs font-bold hover:bg-neon hover:text-black transition-all">
+            CONNECT WALLET
+        </button>
+    </header>
+
+    <!-- Main Container -->
+    <main class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+        
+        <!-- Input Form Controls -->
+        <div class="bg-zinc-900/50 p-6 rounded-lg border border-zinc-800 space-y-4">
+            <h2 class="font-header text-lg text-white font-bold border-b border-zinc-800 pb-2">1. CARD CONFIGURATION</h2>
+            
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">HANDLE / NAME</label>
+                <input type="text" id="inputHandle" value="@donpudgy" oninput="updateCard()" class="w-full bg-zinc-950 border border-zinc-800 p-2 text-xs text-white focus:border-neon outline-none">
+            </div>
+
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">ARCHETYPE / CLASS</label>
+                <select id="inputArchetype" onchange="updateCard()" class="w-full bg-zinc-950 border border-zinc-800 p-2 text-xs text-white focus:border-neon outline-none">
+                    <option value="ALPHA DEGEN">ALPHA DEGEN</option>
+                    <option value="TRENCH WARRIOR">TRENCH WARRIOR</option>
+                    <option value="YIELD FARMER">YIELD FARMER</option>
+                    <option value="WHALE SHARK">WHALE SHARK</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs text-gray-400 mb-1">PFP IMAGE URL</label>
+                <input type="text" id="inputPfp" value="https://api.dicebear.com/7.x/bottts/svg?seed=trench" oninput="updateCard()" class="w-full bg-zinc-950 border border-zinc-800 p-2 text-xs text-white focus:border-neon outline-none">
+            </div>
+
+            <!-- Stat Sliders -->
+            <div class="space-y-3 pt-2">
+                <div>
+                    <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-400">CONVICTION</span>
+                        <span id="valConviction" class="accent-neon">98</span>
+                    </div>
+                    <input type="range" id="statConviction" min="1" max="99" value="98" oninput="updateCard()" class="w-full accent-lime-400">
+                </div>
+                <div>
+                    <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-400">LUCK</span>
+                        <span id="valLuck" class="accent-neon">42</span>
+                    </div>
+                    <input type="range" id="statLuck" min="1" max="99" value="42" oninput="updateCard()" class="w-full accent-lime-400">
+                </div>
+                <div>
+                    <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-400">LEVERAGE</span>
+                        <span id="valLeverage" class="accent-neon">90</span>
+                    </div>
+                    <input type="range" id="statLeverage" min="1" max="99" value="90" oninput="updateCard()" class="w-full accent-lime-400">
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="pt-4 grid grid-cols-2 gap-3">
+                <button onclick="downloadCard()" class="bg-zinc-800 hover:bg-zinc-700 text-white font-bold py-3 text-xs tracking-wider transition-all">
+                    DOWNLOAD PNG
+                </button>
+                <button onclick="shareOnX()" class="bg-sky-600 hover:bg-sky-500 text-white font-bold py-3 text-xs tracking-wider transition-all flex items-center justify-center gap-1">
+                    SHARE TO 𝕏
+                </button>
+            </div>
+            <button id="mintBtn" onclick="mintNFT()" class="w-full bg-neon text-black font-black py-3 text-xs tracking-wider hover:brightness-110 transition-all">
+                MINT EVM NFT ($0 GAS VOUCHER)
+            </button>
+        </div>
+
+        <!-- Live Card Preview -->
+        <div class="flex flex-col items-center">
+            <h2 class="font-header text-lg text-white font-bold mb-4 self-start">2. CARD PREVIEW</h2>
+            
+            <div id="cardCanvas" class="card-frame w-[360px] h-[520px] rounded-xl p-5 flex flex-col justify-between relative overflow-hidden">
+                <div class="flex justify-between items-center text-[10px] text-gray-500 border-b border-zinc-800 pb-2">
+                    <span>NODE // 7F-X9</span>
+                    <span class="text-emerald-400 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> VERIFIED
+                    </span>
+                </div>
+
+                <div class="flex gap-4 items-center my-2">
+                    <div class="w-20 h-20 border-2 border-neon rounded-lg overflow-hidden bg-black shrink-0">
+                        <img id="cardPfp" src="https://api.dicebear.com/7.x/bottts/svg?seed=trench" class="w-full h-full object-cover" crossorigin="anonymous">
+                    </div>
+                    <div class="overflow-hidden">
+                        <p class="text-[10px] text-gray-500">IDENTITY</p>
+                        <p id="cardHandle" class="font-header text-lg font-black text-white truncate">@donpudgy</p>
+                        <p class="text-[10px] text-gray-500 mt-1">CLASS</p>
+                        <p id="cardArchetype" class="text-xs font-bold text-neon tracking-wider">ALPHA DEGEN</p>
+                    </div>
+                </div>
+
+                <div class="relative bg-zinc-950/80 p-3 rounded border border-zinc-800/80 my-1">
+                    <div class="absolute right-2 top-2 text-[9px] text-zinc-600 font-mono">AUTH_LEVEL: OMEGA</div>
+                    <div id="cardMainId" class="font-header text-4xl font-black text-white tracking-tighter">#8492</div>
+                    <div class="text-[9px] text-gray-500 tracking-widest mt-0.5" id="mintStatusText">GENERATED ID BADGE</div>
+                </div>
+
+                <div class="space-y-2 text-xs">
+                    <div>
+                        <div class="flex justify-between text-[10px] text-gray-400">
+                            <span>CONVICTION</span>
+                            <span id="cardStatConviction" class="text-white font-bold">98</span>
+                        </div>
+                        <div class="w-full bg-zinc-900 h-1.5 rounded-full overflow-hidden mt-0.5">
+                            <div id="barConviction" class="bg-neon h-full" style="width: 98%;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-[10px] text-gray-400">
+                            <span>LUCK</span>
+                            <span id="cardStatLuck" class="text-white font-bold">42</span>
+                        </div>
+                        <div class="w-full bg-zinc-900 h-1.5 rounded-full overflow-hidden mt-0.5">
+                            <div id="barLuck" class="bg-neon h-full" style="width: 42%;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-[10px] text-gray-400">
+                            <span>LEVERAGE</span>
+                            <span id="cardStatLeverage" class="text-white font-bold">90</span>
+                        </div>
+                        <div class="w-full bg-zinc-900 h-1.5 rounded-full overflow-hidden mt-0.5">
+                            <div id="barLeverage" class="bg-neon h-full" style="width: 90%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-end pt-2 border-t border-zinc-800 text-[9px] text-gray-500">
+                    <div>
+                        <p>SIGNAL: STRONG</p>
+                        <p id="cardWallet" class="font-mono text-zinc-400">0x000...0000</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="border border-zinc-700 px-1 py-0.5 text-zinc-400">DO NOT DUPLICATE</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const CONTRACT_ADDRESS = "0xYOUR_DEPLOYED_CONTRACT_ADDRESS";
+        const CONTRACT_ABI = [
+            "function mintCard(address to, string handle, string archetype, string uri, uint256 nonce, bytes signature) external payable"
+        ];
+
+        let userAddress = null;
+        let randomCardId = Math.floor(1000 + Math.random() * 9000);
+        document.getElementById('cardMainId').innerText = `#${randomCardId}`;
+
+        function updateCard() {
+            const handle = document.getElementById('inputHandle').value;
+            const archetype = document.getElementById('inputArchetype').value;
+            const pfp = document.getElementById('inputPfp').value;
+
+            const conviction = document.getElementById('statConviction').value;
+            const luck = document.getElementById('statLuck').value;
+            const leverage = document.getElementById('statLeverage').value;
+
+            document.getElementById('cardHandle').innerText = handle || '@user';
+            document.getElementById('cardArchetype').innerText = archetype;
+            document.getElementById('cardPfp').src = pfp;
+
+            document.getElementById('valConviction').innerText = conviction;
+            document.getElementById('valLuck').innerText = luck;
+            document.getElementById('valLeverage').innerText = leverage;
+
+            document.getElementById('cardStatConviction').innerText = conviction;
+            document.getElementById('cardStatLuck').innerText = luck;
+            document.getElementById('cardStatLeverage').innerText = leverage;
+
+            document.getElementById('barConviction').style.width = conviction + '%';
+            document.getElementById('barLuck').style.width = luck + '%';
+            document.getElementById('barLeverage').style.width = leverage + '%';
+        }
+
+        function downloadCard() {
+            const cardNode = document.getElementById('cardCanvas');
+            html2canvas(cardNode, { useCORS: true, backgroundColor: '#08080c' }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'trench-identity-card.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+        }
+
+        function shareOnX() {
+            const handle = document.getElementById('inputHandle').value;
+            const archetype = document.getElementById('inputArchetype').value;
+            const text = encodeURIComponent(`Just unlocked my official crypto identity card in the trenches. 🛡️\n\nHandle: ${handle}\nClass: ${archetype}\nID: #${randomCardId}\n\nCheck yours here and claim your status 👇`);
+            window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank');
+        }
+
+        async function connectWallet() {
+            if (window.ethereum) {
+                try {
+                    const provider = new ethers.BrowserProvider(window.ethereum);
+                    const accounts = await provider.send("eth_requestAccounts", []);
+                    userAddress = accounts[0];
+                    document.getElementById('connectWalletBtn').innerText = userAddress.substring(0, 6) + "..." + userAddress.substring(38);
+                    document.getElementById('cardWallet').innerText = userAddress.substring(0, 6) + "..." + userAddress.substring(38);
+                } catch (err) {
+                    alert("Wallet connection rejected.");
+                }
+            } else {
+                if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+                    window.location.href = `https://metamask.app.link/dapp/${window.location.host}${window.location.pathname}`;
+                } else {
+                    alert("No EVM wallet detected. Please install MetaMask, Coinbase Wallet, or Rabby.");
+                }
+            }
+        }
+
+        async function mintNFT() {
+            if (!userAddress) {
+                await connectWallet();
+                if (!userAddress) return;
+            }
+
+            const handle = document.getElementById('inputHandle').value;
+            const archetype = document.getElementById('inputArchetype').value;
+            const dummyMetadataURI = "ipfs://QmYourMetadataHash/metadata.json";
+            const nonce = Date.now();
+
+            try {
+                document.getElementById('mintBtn').innerText = "FETCHING SIGNATURE...";
+
+                const response = await fetch('/api/get-mint-signature', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ to: userAddress, handle, archetype, tokenURI: dummyMetadataURI, nonce })
+                });
+
+                const data = await response.json();
+                if (!data.signature) {
+                    alert("Failed to get backend signature.");
+                    document.getElementById('mintBtn').innerText = "MINT EVM NFT ($0 GAS VOUCHER)";
+                    return;
+                }
+
+                document.getElementById('mintBtn').innerText = "CONFIRMING ON-CHAIN...";
+
+                const provider = new ethers.BrowserProvider(window.ethereum);
+                const signer = await provider.getSigner();
+                const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+                const tx = await contract.mintCard(userAddress, handle, archetype, dummyMetadataURI, nonce, data.signature);
+                await tx.wait();
+
+                document.getElementById('mintStatusText').innerText = "VERIFIED ON-CHAIN NFT";
+                alert("SUCCESS! Your Identity Card NFT has been minted permanently.");
+                document.getElementById('mintBtn').innerText = "MINTED ✓";
+
+            } catch (err) {
+                console.error(err);
+                alert("Transaction failed or rejected.");
+                document.getElementById('mintBtn').innerText = "MINT EVM NFT ($0 GAS VOUCHER)";
+            }
+        }
+    </script>
+</body>
+</html>
