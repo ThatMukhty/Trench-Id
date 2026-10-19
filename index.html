@@ -9,7 +9,7 @@
     <!-- Ethers v6 & html2canvas -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <style>
+   <style>
         @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Space+Grotesk:wght@700;900&display=swap');
 
         body {
@@ -18,11 +18,30 @@
             font-family: 'Fira Code', monospace;
         }
         .font-header { font-family: 'Space Grotesk', sans-serif; }
+        
+        /* Upgraded Metallic Cyber Card Frame */
         .card-frame {
-            background: linear-gradient(135deg, #12131a 0%, #090a0f 100%);
-            border: 2px solid #2a2d3d;
-            box-shadow: 0 0 35px rgba(204, 255, 0, 0.05), inset 0 0 15px rgba(255, 255, 255, 0.02);
+            background: radial-gradient(circle at top left, #1a1c26 0%, #08080c 100%);
+            border: 1px solid #333748;
+            box-shadow: 
+                0 0 0 1px #12131a,
+                0 20px 50px rgba(0, 0, 0, 0.9),
+                inset 0 1px 1px rgba(255, 255, 255, 0.1),
+                0 0 25px rgba(204, 255, 0, 0.12);
+            position: relative;
         }
+
+        /* Cybernetic Corner Trim Accent */
+        .card-frame::before {
+            content: '';
+            position: absolute;
+            top: 0; right: 0;
+            width: 24px; height: 24px;
+            border-top: 2px solid #ccff00;
+            border-right: 2px solid #ccff00;
+            pointer-events: none;
+        }
+
         .accent-neon { color: #ccff00; }
         .bg-neon { background-color: #ccff00; }
         .border-neon { border-color: #ccff00; }
@@ -47,11 +66,13 @@
         <!-- Input Form Controls -->
         <div class="bg-zinc-900/50 p-6 rounded-lg border border-zinc-800 space-y-4">
             <h2 class="font-header text-lg text-white font-bold border-b border-zinc-800 pb-2">1. CARD CONFIGURATION</h2>
-            
-            <div>
-                <label class="block text-xs text-gray-400 mb-1">HANDLE / NAME</label>
-                <input type="text" id="inputHandle" value="@donpudgy" oninput="updateCard()" class="w-full bg-zinc-950 border border-zinc-800 p-2 text-xs text-white focus:border-neon outline-none">
-            </div>
+           <div>
+    <label class="block text-xs text-gray-400 mb-1">UPLOAD PFP IMAGE</label>
+    <input type="file" id="inputPfpFile" accept="image/*" onchange="handlePfpUpload(event)" class="w-full bg-zinc-950 border border-zinc-800 p-1 text-xs text-gray-400 focus:border-neon outline-none mb-2">
+
+    <label class="block text-xs text-gray-400 mb-1">OR IMAGE URL</label>
+    <input type="text" id="inputPfp" value="https://api.dicebear.com/7.x/bottts/svg?seed=trench" oninput="updateCard()" class="w-full bg-zinc-950 border border-zinc-800 p-2 text-xs text-white focus:border-neon outline-none">
+</div>
 
             <div>
                 <label class="block text-xs text-gray-400 mb-1">ARCHETYPE / CLASS</label>
@@ -93,20 +114,7 @@
                 </div>
             </div>
 
-            <!-- Action Buttons -->
-            <div class="pt-4 grid grid-cols-2 gap-3">
-                <button onclick="downloadCard()" class="bg-zinc-800 hover:bg-zinc-700 text-white font-bold py-3 text-xs tracking-wider transition-all">
-                    DOWNLOAD PNG
-                </button>
-                <button onclick="shareOnX()" class="bg-sky-600 hover:bg-sky-500 text-white font-bold py-3 text-xs tracking-wider transition-all flex items-center justify-center gap-1">
-                    SHARE TO 𝕏
-                </button>
-            </div>
-            <button id="mintBtn" onclick="mintNFT()" class="w-full bg-neon text-black font-black py-3 text-xs tracking-wider hover:brightness-110 transition-all">
-                MINT EVM NFT ($0 GAS VOUCHER)
-            </button>
-        </div>
-
+        
         <!-- Live Card Preview -->
         <div class="flex flex-col items-center">
             <h2 class="font-header text-lg text-white font-bold mb-4 self-start">2. CARD PREVIEW</h2>
@@ -176,6 +184,20 @@
                         <span class="border border-zinc-700 px-1 py-0.5 text-zinc-400">DO NOT DUPLICATE</span>
                     </div>
                 </div>
+                <!-- Action Buttons Under Card Preview -->
+        <div class="w-[360px] mt-4 space-y-3">
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="downloadCard()" class="bg-zinc-800 hover:bg-zinc-700 text-white font-bold py-3 text-xs tracking-wider transition-all">
+                    DOWNLOAD PNG
+                </button>
+                <button onclick="shareOnX()" class="bg-sky-600 hover:bg-sky-500 text-white font-bold py-3 text-xs tracking-wider transition-all flex items-center justify-center gap-1">
+                    SHARE TO 𝕏
+                </button>
+            </div>
+            <button id="mintBtn" onclick="mintNFT()" class="w-full bg-neon text-black font-black py-3 text-xs tracking-wider hover:brightness-110 transition-all">
+                MINT EVM NFT ($0 GAS VOUCHER)
+            </button>
+        </div>
             </div>
         </div>
     </main>
@@ -187,6 +209,17 @@
         ];
 
         let userAddress = null;
+        // Handle local file uploads for PFP
+        function handlePfpUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('cardPfp').src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
         let randomCardId = Math.floor(1000 + Math.random() * 9000);
         document.getElementById('cardMainId').innerText = `#${randomCardId}`;
 
