@@ -1,9 +1,7 @@
 {
-  "version": 2,
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/"
+  "functions": {
+    "api/voucher.js": {
+      "maxDuration": 30
     }
-  ]
+  }
 }

@@ -2,6 +2,9 @@
   "name": "trench-id",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": "20.x"
+  },
   "dependencies": {
     "ethers": "6.13.4"
   }
