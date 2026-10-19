@@ -79,10 +79,21 @@ export default async function handler(req, res) {
       chainId: Number(process.env.CHAIN_ID),
       verifyingContract: process.env.CONTRACT_ADDRESS
     };
-    const signature = await new Wallet(process.env.SIGNER_PRIVATE_KEY).signTypedData(domain, TYPES, voucher);
-
-    return res.status(200).json({ voucher, signature, price: process.env.MINT_PRICE_WEI || "0" });
+  const signature = await wallet.signTypedData(domain, TYPES, value);
+    
+    return new Response(JSON.stringify({ voucher, signature, price: process.env.MINT_PRICE_WEI || "0" }), {
+      status: 200,
+      headers: { 
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*"
+      }
+    });
   } catch (e) {
-    return res.status(500).json({ error: e.message || "Server error" });
+    return new Response(JSON.stringify({ error: e.message || "Server error" }), {
+      status: 500,
+      headers: { 
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*"
+      }
+    });
   }
-}
