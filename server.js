@@ -9,20 +9,34 @@ const TYPES = {
   ]
 };
 
-export default async function handler(req, res) {
+export default async function handler(req) {
   if (req.method === "OPTIONS") {
-    return res.status(204).setHeader("Access-Control-Allow-Origin", "*").end();
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+      },
+    });
   }
 
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   try {
-    const { minter, uri } = req.body;
+    const body = await req.json();
+    const { minter, uri } = body;
 
     if (!minter || !uri) {
-      return res.status(400).json({ error: "Missing minter or uri" });
+      return new Response(JSON.stringify({ error: "Missing minter or uri" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     const privateKey = process.env.SIGNER_PRIVATE_KEY;
@@ -30,7 +44,10 @@ export default async function handler(req, res) {
     const contractAddress = process.env.CONTRACT_ADDRESS;
 
     if (!privateKey || !contractAddress) {
-      return res.status(500).json({ error: "Server environment misconfigured" });
+      return new Response(JSON.stringify({ error: "Server environment misconfigured" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     const wallet = new Wallet(privateKey);
@@ -53,11 +70,26 @@ export default async function handler(req, res) {
 
     const signature = await wallet.signTypedData(domain, TYPES, value);
 
-    return res.status(200).json({
-      voucher: { minter: value.minter, uri, nonce, deadline, signature },
-      price: process.env.MINT_PRICE_WEI || "0"
-    });
+    return new Response(
+      JSON.stringify({
+        voucher: { minter: value.minter, uri, nonce, deadline, signature },
+        price: process.env.MINT_PRICE_WEI || "0"
+      }),
+      {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      }
+    );
   } catch (e) {
-    return res.status(500).json({ error: e.message || "Server error" });
+    return new Response(JSON.stringify({ error: e.message || "Server error" }), {
+      status: 500,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
   }
 }
