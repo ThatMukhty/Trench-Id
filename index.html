@@ -1,337 +1,384 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TRENCH // Identity Card Generator & NFT Mint</title>
-    <!-- Tailwind CSS (Standalone Engine for Browser Environments) -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Ethers v6 & html2canvas -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-   <style>
-        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Space+Grotesk:wght@700;900&display=swap');
-
-        body {
-            background-color: #08080c;
-            color: #e2e8f0;
-            font-family: 'Fira Code', monospace;
-        }
-        .font-header { font-family: 'Space Grotesk', sans-serif; }
-        
-        /* Upgraded Metallic Cyber Card Frame */
-        .card-frame {
-            background: radial-gradient(circle at top left, #1a1c26 0%, #08080c 100%);
-            border: 1px solid #333748;
-            box-shadow: 
-                0 0 0 1px #12131a,
-                0 20px 50px rgba(0, 0, 0, 0.9),
-                inset 0 1px 1px rgba(255, 255, 255, 0.1),
-                0 0 25px rgba(204, 255, 0, 0.12);
-            position: relative;
-        }
-
-        /* Cybernetic Corner Trim Accent */
-        .card-frame::before {
-            content: '';
-            position: absolute;
-            top: 0; right: 0;
-            width: 24px; height: 24px;
-            border-top: 2px solid #ccff00;
-            border-right: 2px solid #ccff00;
-            pointer-events: none;
-        }
-
-        .accent-neon { color: #ccff00; }
-        .bg-neon { background-color: #ccff00; }
-        .border-neon { border-color: #ccff00; }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TRENCH ID — Identity Card Minter</title>
+<meta name="theme-color" content="#07070a">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;900&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --obs:#07070a; --obs2:#0e0d0b; --panel:#12100c; --line:#2a2417;
+  --amber:#ffb000; --gold:#ffd98a; --bronze:#8a5a00; --text:#f3ead6; --mute:#8d8368; --err:#ff5a3c;
+}
+*{box-sizing:border-box;margin:0}
+html{background:var(--obs)}
+body{
+  min-height:100vh;color:var(--text);font-family:'JetBrains Mono',monospace;
+  background:
+    radial-gradient(900px 500px at 85% -10%,rgba(255,176,0,.14),transparent 60%),
+    radial-gradient(700px 400px at -10% 110%,rgba(138,90,0,.18),transparent 60%),
+    repeating-linear-gradient(115deg,rgba(255,217,138,.018) 0 2px,transparent 2px 9px),
+    var(--obs);
+  padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;max-width:1180px;margin:0 auto;padding:20px 20px 8px}
+.brand{font-family:'Unbounded';font-weight:900;letter-spacing:.14em;font-size:15px;
+  background:linear-gradient(90deg,var(--gold),var(--amber));-webkit-background-clip:text;background-clip:text;color:transparent}
+.brand small{display:block;font-family:'JetBrains Mono';font-weight:400;letter-spacing:.3em;font-size:9px;color:var(--mute);-webkit-text-fill-color:var(--mute);margin-top:4px}
+.btn{font-family:'JetBrains Mono';font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border-radius:12px;padding:14px 18px;border:1px solid var(--line);background:var(--panel);color:var(--text);transition:.18s;min-height:48px}
+.btn:hover{border-color:var(--amber);transform:translateY(-1px)}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn.gold{border:0;color:#1a1100;background:linear-gradient(135deg,var(--gold),var(--amber) 55%,#c98300);box-shadow:0 8px 30px -8px rgba(255,176,0,.55)}
+.btn.gold:hover{box-shadow:0 12px 36px -6px rgba(255,176,0,.75)}
+main{max-width:1180px;margin:0 auto;padding:12px 20px 60px;display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:28px;align-items:start}
+.preview{position:sticky;top:16px;order:2}
+.form{order:1}
+@media(max-width:900px){main{grid-template-columns:1fr}.preview{position:static;order:1}.form{order:2}}
+.stage{perspective:1200px}
+.cardwrap{border-radius:26px;transition:transform .15s;box-shadow:0 40px 80px -30px rgba(255,176,0,.35),0 0 0 1px rgba(255,217,138,.15)}
+canvas{display:block;width:100%;aspect-ratio:16/9;border-radius:26px}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.actions .gold{grid-column:1/-1}
+.status{margin-top:12px;font-size:12px;color:var(--mute);min-height:18px;word-break:break-word}
+.status.err{color:var(--err)} .status a{color:var(--gold)}
+.panel{background:linear-gradient(180deg,var(--panel),var(--obs2));border:1px solid var(--line);border-radius:20px;padding:22px}
+.panel h2{font-family:'Unbounded';font-size:12px;letter-spacing:.2em;color:var(--gold);margin-bottom:18px}
+.panel+.panel{margin-top:16px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+label{display:block;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--mute);margin-bottom:6px}
+.f{margin-bottom:12px}
+input,select{width:100%;background:#0a0908;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:13px 12px;font:500 14px 'JetBrains Mono';outline:none;min-height:46px}
+input:focus,select:focus{border-color:var(--amber);box-shadow:0 0 0 3px rgba(255,176,0,.14)}
+input[type=file]{padding:10px}
+.wallet{display:flex;gap:10px;align-items:center;justify-content:space-between}
+.wallet span{font-size:12px;color:var(--mute)} .wallet b{color:var(--gold)}
+.modal{position:fixed;inset:0;background:rgba(3,3,4,.82);backdrop-filter:blur(8px);display:none;align-items:flex-end;justify-content:center;z-index:50;padding:16px}
+.modal.open{display:flex}
+@media(min-width:700px){.modal{align-items:center}}
+.sheet{width:100%;max-width:460px;background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:20px;max-height:86vh;overflow:auto}
+.sheet h3{font-family:'Unbounded';font-size:13px;letter-spacing:.16em;color:var(--gold);margin-bottom:14px;display:flex;justify-content:space-between}
+.sheet h3 button{background:none;border:0;color:var(--mute);font-size:20px;cursor:pointer}
+.wl{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.wl button{display:flex;align-items:center;gap:10px;text-align:left;padding:14px 12px;border-radius:12px;background:#0a0908;border:1px solid var(--line);color:var(--text);font:500 12px 'JetBrains Mono';cursor:pointer;min-height:52px}
+.wl button:hover{border-color:var(--amber)}
+.wl i{width:26px;height:26px;border-radius:8px;flex:none;display:grid;place-items:center;font-style:normal;font-weight:700;color:#1a1100;background:linear-gradient(135deg,var(--gold),var(--amber))}
+.wl em{display:block;font-style:normal;font-size:9px;color:var(--mute);margin-top:2px}
+.hint{font-size:11px;color:var(--mute);margin-top:12px;line-height:1.6}
+</style>
 </head>
-<body class="min-h-screen p-4 md:p-8 flex flex-col items-center">
+<body>
+<header>
+  <div class="brand">TRENCH ID<small>IDENTITY CARD · EVM MINTER</small></div>
+  <button class="btn" id="connectBtn">Connect Wallet</button>
+</header>
 
-    <!-- Header -->
-    <header class="w-full max-w-6xl flex justify-between items-center mb-8 border-b border-gray-800 pb-4">
-        <div>
-            <h1 class="font-header text-2xl font-black tracking-wider text-white">TRENCH <span class="accent-neon">//</span> ID</h1>
-            <p class="text-xs text-gray-500">DISCOVER YOUR CRYPTO IDENTITY</p>
-        </div>
-        <button id="connectWalletBtn" onclick="connectWallet()" class="border border-neon text-neon px-4 py-2 text-xs font-bold hover:bg-neon hover:text-black transition-all">
-            CONNECT WALLET
-        </button>
-    </header>
+<main>
+  <!-- LIVE PREVIEW + ACTIONS -->
+  <section class="preview">
+    <div class="stage"><div class="cardwrap" id="cardwrap"><canvas id="card" width="1200" height="675"></canvas></div></div>
+    <div class="actions">
+      <button class="btn" id="dlBtn">Download PNG</button>
+      <button class="btn" id="shareBtn">Share on X</button>
+      <button class="btn gold" id="mintBtn">Mint Card</button>
+    </div>
+    <div class="status" id="status"></div>
+  </section>
 
-    <!-- Main Container -->
-    <main class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        
-        <!-- Input Form Controls -->
-        <div class="bg-zinc-900/50 p-6 rounded-lg border border-zinc-800 space-y-4">
-            <h2 class="font-header text-lg text-white font-bold border-b border-zinc-800 pb-2">1. CARD CONFIGURATION</h2>
-           <div>
-    <label class="block text-xs text-gray-400 mb-1">UPLOAD PFP IMAGE</label>
-    <input type="file" id="inputPfpFile" accept="image/*" onchange="handlePfpUpload(event)" class="w-full bg-zinc-950 border border-zinc-800 p-1 text-xs text-gray-400 focus:border-neon outline-none mb-2">
+  <!-- CONFIGURATION (single source of inputs) -->
+  <section class="form">
+    <div class="panel">
+      <h2>IDENTITY</h2>
+      <div class="f"><label for="handle">X / Handle</label><input id="handle" value="trenchlord" maxlength="20" autocomplete="off"></div>
+      <div class="f"><label for="name">Display name</label><input id="name" value="Satoshi's Cousin" maxlength="26" autocomplete="off"></div>
+      <div class="f"><label for="tagline">Tagline</label><input id="tagline" value="Bought the top. Held the bottom." maxlength="44" autocomplete="off"></div>
+      <div class="grid2">
+        <div class="f"><label for="tier">Rank</label>
+          <select id="tier">
+            <option>TRENCH VETERAN</option><option>EXIT LIQUIDITY SURVIVOR</option><option>DEGEN ROYALTY</option>
+            <option>RUG PROOF</option><option>ALPHA HUNTER</option><option>DIAMOND HANDS</option>
+          </select></div>
+        <div class="f"><label for="foil">Foil</label>
+          <select id="foil"><option value="amber">Hyper Amber</option><option value="gold">Liquid Gold</option><option value="chrome">Obsidian Chrome</option></select></div>
+      </div>
+      <div class="f"><label for="avatar">Avatar (optional)</label><input id="avatar" type="file" accept="image/*"></div>
+    </div>
 
-    <label class="block text-xs text-gray-400 mb-1">OR IMAGE URL</label>
-    <input type="text" id="inputPfp" value="https://api.dicebear.com/7.x/bottts/svg?seed=trench" oninput="updateCard()" class="w-full bg-zinc-950 border border-zinc-800 p-2 text-xs text-white focus:border-neon outline-none">
-</div>
+    <div class="panel">
+      <h2>STATS</h2>
+      <div class="grid2">
+        <div class="f"><label for="pnl">Realized PnL</label><input id="pnl" value="+842 ETH" maxlength="14"></div>
+        <div class="f"><label for="win">Win rate</label><input id="win" value="61%" maxlength="6"></div>
+        <div class="f"><label for="trades">Trades</label><input id="trades" value="4,209" maxlength="9"></div>
+        <div class="f"><label for="rugs">Rugs survived</label><input id="rugs" value="87" maxlength="6"></div>
+      </div>
+      <div class="f"><label for="since">In the trenches since</label><input id="since" type="number" value="2021" min="2009" max="2100"></div>
+    </div>
 
-            <div>
-                <label class="block text-xs text-gray-400 mb-1">ARCHETYPE / CLASS</label>
-                <select id="inputArchetype" onchange="updateCard()" class="w-full bg-zinc-950 border border-zinc-800 p-2 text-xs text-white focus:border-neon outline-none">
-                    <option value="ALPHA DEGEN">ALPHA DEGEN</option>
-                    <option value="TRENCH WARRIOR">TRENCH WARRIOR</option>
-                    <option value="YIELD FARMER">YIELD FARMER</option>
-                    <option value="WHALE SHARK">WHALE SHARK</option>
-                </select>
-            </div>
+    <div class="panel">
+      <h2>WALLET</h2>
+      <div class="wallet"><span id="walletLabel">Not connected</span><button class="btn" id="connectBtn2">Connect</button></div>
+      <p class="hint">Minting is free to the creator: the card is signed off-chain (EIP-712). You only pay your own network fee when you claim it.</p>
+    </div>
+  </section>
+</main>
 
-            <div>
-                <label class="block text-xs text-gray-400 mb-1">PFP IMAGE URL</label>
-                <input type="text" id="inputPfp" value="https://api.dicebear.com/7.x/bottts/svg?seed=trench" oninput="updateCard()" class="w-full bg-zinc-950 border border-zinc-800 p-2 text-xs text-white focus:border-neon outline-none">
-            </div>
+<div class="modal" id="modal"><div class="sheet">
+  <h3>CONNECT WALLET <button id="closeModal" aria-label="Close">×</button></h3>
+  <div class="wl" id="wl"></div>
+  <p class="hint">On mobile, tap your wallet to open this page inside its app browser. Anything else uses WalletConnect.</p>
+</div></div>
 
-            <!-- Stat Sliders -->
-            <div class="space-y-3 pt-2">
-                <div>
-                    <div class="flex justify-between text-xs mb-1">
-                        <span class="text-gray-400">CONVICTION</span>
-                        <span id="valConviction" class="accent-neon">98</span>
-                    </div>
-                    <input type="range" id="statConviction" min="1" max="99" value="98" oninput="updateCard()" class="w-full accent-lime-400">
-                </div>
-                <div>
-                    <div class="flex justify-between text-xs mb-1">
-                        <span class="text-gray-400">LUCK</span>
-                        <span id="valLuck" class="accent-neon">42</span>
-                    </div>
-                    <input type="range" id="statLuck" min="1" max="99" value="42" oninput="updateCard()" class="w-full accent-lime-400">
-                </div>
-                <div>
-                    <div class="flex justify-between text-xs mb-1">
-                        <span class="text-gray-400">LEVERAGE</span>
-                        <span id="valLeverage" class="accent-neon">90</span>
-                    </div>
-                    <input type="range" id="statLeverage" min="1" max="99" value="90" oninput="updateCard()" class="w-full accent-lime-400">
-                </div>
-            </div>
+<script type="module">
+import { BrowserProvider, Contract } from "https://esm.sh/ethers@6.13.4";
+import { EthereumProvider } from "https://esm.sh/@walletconnect/ethereum-provider@2.17.0";
 
-        
-        <!-- Live Card Preview -->
-        <div class="flex flex-col items-center">
-            <h2 class="font-header text-lg text-white font-bold mb-4 self-start">2. CARD PREVIEW</h2>
-            
-            <div id="cardCanvas" class="card-frame w-[360px] h-[520px] rounded-xl p-5 flex flex-col justify-between relative overflow-hidden">
-                <div class="flex justify-between items-center text-[10px] text-gray-500 border-b border-zinc-800 pb-2">
-                    <span>NODE // 7F-X9</span>
-                    <span class="text-emerald-400 flex items-center gap-1">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> VERIFIED
-                    </span>
-                </div>
+/* ====== CONFIG — edit these ====== */
+const CONFIG = {
+  chainId: 1,                         // 1 = Ethereum mainnet, 11155111 = Sepolia (test first!)
+  chainName: "Ethereum",
+  explorer: "https://etherscan.io",
+  contract: "0xYourDeployedContractAddress",
+  api: "/api/voucher",
+  wcProjectId: "YOUR_WALLETCONNECT_PROJECT_ID",   // free at cloud.reown.com
+  siteUrl: location.origin
+};
+const ABI = [
+  "function redeem((address minter,string uri,uint256 nonce,uint256 deadline) v, bytes signature) payable returns (uint256)",
+  "function mintPrice() view returns (uint256)"
+];
 
-                <div class="flex gap-4 items-center my-2">
-                    <div class="w-20 h-20 border-2 border-neon rounded-lg overflow-hidden bg-black shrink-0">
-                        <img id="cardPfp" src="https://api.dicebear.com/7.x/bottts/svg?seed=trench" class="w-full h-full object-cover" crossorigin="anonymous">
-                    </div>
-                    <div class="overflow-hidden">
-                        <p class="text-[10px] text-gray-500">IDENTITY</p>
-                        <p id="cardHandle" class="font-header text-lg font-black text-white truncate">@donpudgy</p>
-                        <p class="text-[10px] text-gray-500 mt-1">CLASS</p>
-                        <p id="cardArchetype" class="text-xs font-bold text-neon tracking-wider">ALPHA DEGEN</p>
-                    </div>
-                </div>
+/* ====== WALLETS (Robinhood + 8, plus generic WalletConnect) ====== */
+const dapp = location.host + location.pathname + location.search;
+const full = location.href;
+const WALLETS = [
+  { id:"metamask", name:"MetaMask", match:/metamask/i, deep:()=>`https://metamask.app.link/dapp/${dapp}` },
+  { id:"rabby", name:"Rabby", match:/rabby/i },
+  { id:"robinhood", name:"Robinhood Wallet", match:/robinhood/i },
+  { id:"coinbase", name:"Coinbase Wallet", match:/coinbase/i, deep:()=>`https://go.cb-w.com/dapp?cb_url=${encodeURIComponent(full)}` },
+  { id:"trust", name:"Trust Wallet", match:/trust/i, deep:()=>`https://link.trustwallet.com/open_url?coin_id=60&url=${encodeURIComponent(full)}` },
+  { id:"rainbow", name:"Rainbow", match:/rainbow/i },
+  { id:"okx", name:"OKX Wallet", match:/okx/i, deep:()=>`okx://wallet/dapp/url?dappUrl=${encodeURIComponent(full)}` },
+  { id:"phantom", name:"Phantom", match:/phantom/i, deep:()=>`https://phantom.app/ul/browse/${encodeURIComponent(full)}?ref=${encodeURIComponent(location.origin)}` },
+  { id:"zerion", name:"Zerion", match:/zerion/i },
+  { id:"walletconnect", name:"WalletConnect", match:/^$/, wc:true }
+];
+const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-                <div class="relative bg-zinc-950/80 p-3 rounded border border-zinc-800/80 my-1">
-                    <div class="absolute right-2 top-2 text-[9px] text-zinc-600 font-mono">AUTH_LEVEL: OMEGA</div>
-                    <div id="cardMainId" class="font-header text-4xl font-black text-white tracking-tighter">#8492</div>
-                    <div class="text-[9px] text-gray-500 tracking-widest mt-0.5" id="mintStatusText">GENERATED ID BADGE</div>
-                </div>
+/* EIP-6963 discovery of desktop/injected wallets */
+const injected = [];
+addEventListener("eip6963:announceProvider", e => injected.push(e.detail));
+dispatchEvent(new Event("eip6963:requestProvider"));
 
-                <div class="space-y-2 text-xs">
-                    <div>
-                        <div class="flex justify-between text-[10px] text-gray-400">
-                            <span>CONVICTION</span>
-                            <span id="cardStatConviction" class="text-white font-bold">98</span>
-                        </div>
-                        <div class="w-full bg-zinc-900 h-1.5 rounded-full overflow-hidden mt-0.5">
-                            <div id="barConviction" class="bg-neon h-full" style="width: 98%;"></div>
-                        </div>
-                    </div>
-                    <div>
-                        <div class="flex justify-between text-[10px] text-gray-400">
-                            <span>LUCK</span>
-                            <span id="cardStatLuck" class="text-white font-bold">42</span>
-                        </div>
-                        <div class="w-full bg-zinc-900 h-1.5 rounded-full overflow-hidden mt-0.5">
-                            <div id="barLuck" class="bg-neon h-full" style="width: 42%;"></div>
-                        </div>
-                    </div>
-                    <div>
-                        <div class="flex justify-between text-[10px] text-gray-400">
-                            <span>LEVERAGE</span>
-                            <span id="cardStatLeverage" class="text-white font-bold">90</span>
-                        </div>
-                        <div class="w-full bg-zinc-900 h-1.5 rounded-full overflow-hidden mt-0.5">
-                            <div id="barLeverage" class="bg-neon h-full" style="width: 90%;"></div>
-                        </div>
-                    </div>
-                </div>
+/* ====== STATE & HELPERS ====== */
+const $ = id => document.getElementById(id);
+let eip1193 = null, signer = null, account = null, avatarImg = null;
+const short = a => a ? a.slice(0,6)+"…"+a.slice(-4) : "";
+function say(html, err){ const s=$("status"); s.className="status"+(err?" err":""); s.innerHTML=html; }
 
-                <div class="flex justify-between items-end pt-2 border-t border-zinc-800 text-[9px] text-gray-500">
-                    <div>
-                        <p>SIGNAL: STRONG</p>
-                        <p id="cardWallet" class="font-mono text-zinc-400">0x000...0000</p>
-                    </div>
-                    <div class="text-right">
-                        <span class="border border-zinc-700 px-1 py-0.5 text-zinc-400">DO NOT DUPLICATE</span>
-                    </div>
-                </div>
-                <!-- Action Buttons Under Card Preview -->
-        <div class="w-[360px] mt-4 space-y-3">
-            <div class="grid grid-cols-2 gap-3">
-                <button onclick="downloadCard()" class="bg-zinc-800 hover:bg-zinc-700 text-white font-bold py-3 text-xs tracking-wider transition-all">
-                    DOWNLOAD PNG
-                </button>
-                <button onclick="shareOnX()" class="bg-sky-600 hover:bg-sky-500 text-white font-bold py-3 text-xs tracking-wider transition-all flex items-center justify-center gap-1">
-                    SHARE TO 𝕏
-                </button>
-            </div>
-            <button id="mintBtn" onclick="mintNFT()" class="w-full bg-neon text-black font-black py-3 text-xs tracking-wider hover:brightness-110 transition-all">
-                MINT EVM NFT ($0 GAS VOUCHER)
-            </button>
-        </div>
-            </div>
-        </div>
-    </main>
+/* ====== CARD RENDERER ====== */
+const canvas = $("card"), ctx = canvas.getContext("2d");
+const W = 1200, H = 675;
+const FOILS = {
+  amber:{a:"#ffb000", b:"#ffd98a", c:"#7a4a00"},
+  gold:{a:"#e8c15a", b:"#fff1b8", c:"#6b5316"},
+  chrome:{a:"#c9ced4", b:"#ffffff", c:"#565c63"}
+};
+const val = id => $(id).value.trim();
+function serial(){
+  let h = 2166136261; const s = val("handle")+(account||"");
+  for(const ch of s){ h ^= ch.charCodeAt(0); h = Math.imul(h,16777619); }
+  return (h>>>0).toString(16).toUpperCase().padStart(8,"0");
+}
+function fit(text, maxW, size, font){
+  while(size>24){ ctx.font = `${font.replace("{s}", size)}`; if(ctx.measureText(text).width<=maxW) break; size-=2; }
+  return size;
+}
+function spaced(text, x, y, ls){ ctx.letterSpacing = ls+"px"; ctx.fillText(text,x,y); ctx.letterSpacing="0px"; }
 
-    <script>
-        const CONTRACT_ADDRESS = "0xYOUR_DEPLOYED_CONTRACT_ADDRESS";
-        const CONTRACT_ABI = [
-            "function mintCard(address to, string handle, string archetype, string uri, uint256 nonce, bytes signature) external payable"
-        ];
+function draw(){
+  const f = FOILS[$("foil").value];
+  ctx.clearRect(0,0,W,H);
+  // base obsidian
+  let g = ctx.createLinearGradient(0,0,W,H);
+  g.addColorStop(0,"#0c0b09"); g.addColorStop(.5,"#161209"); g.addColorStop(1,"#050505");
+  ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(0,0,W,H,34); ctx.fill();
+  ctx.save(); ctx.beginPath(); ctx.roundRect(0,0,W,H,34); ctx.clip();
+  // guilloche lines
+  ctx.lineWidth = 1; ctx.strokeStyle = f.a+"1c";
+  for(let i=0;i<46;i++){
+    ctx.beginPath();
+    for(let x=0;x<=W;x+=12){ const y = H*.62 + Math.sin(x/110 + i*.28)*(46+i*3.2) + (i-23)*9; x?ctx.lineTo(x,y):ctx.moveTo(x,y); }
+    ctx.stroke();
+  }
+  // glow
+  g = ctx.createRadialGradient(W*.9,-40,10,W*.9,-40,620);
+  g.addColorStop(0,f.a+"55"); g.addColorStop(1,"transparent"); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  // holo sheen band
+  g = ctx.createLinearGradient(W*.3,0,W*.75,H);
+  g.addColorStop(0,"transparent"); g.addColorStop(.5,f.b+"26"); g.addColorStop(1,"transparent");
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  ctx.restore();
+  // frame
+  g = ctx.createLinearGradient(0,0,W,H);
+  g.addColorStop(0,f.b); g.addColorStop(.45,f.a); g.addColorStop(.7,f.c); g.addColorStop(1,f.b);
+  ctx.lineWidth = 4; ctx.strokeStyle = g; ctx.beginPath(); ctx.roundRect(8,8,W-16,H-16,28); ctx.stroke();
+  ctx.lineWidth = 1; ctx.strokeStyle = f.a+"55"; ctx.beginPath(); ctx.roundRect(26,26,W-52,H-52,20); ctx.stroke();
 
-        let userAddress = null;
-        // Handle local file uploads for PFP
-        function handlePfpUpload(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    document.getElementById('cardPfp').src = e.target.result;
-                };
-                reader.readAsDataURL(file);
-            }
-        }
-        let randomCardId = Math.floor(1000 + Math.random() * 9000);
-        document.getElementById('cardMainId').innerText = `#${randomCardId}`;
+  // header
+  ctx.fillStyle = f.b; ctx.font = "700 20px 'JetBrains Mono'"; spaced("TRENCH ID", 64, 82, 8);
+  ctx.fillStyle = f.a+"aa"; ctx.font = "500 15px 'JetBrains Mono'"; ctx.textAlign="right"; spaced(`No. ${serial()}`, W-64, 80, 4); ctx.textAlign="left";
+  // chip
+  g = ctx.createLinearGradient(0,0,90,66); g.addColorStop(0,f.b); g.addColorStop(1,f.c);
+  ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(64,112,86,62,10); ctx.fill();
+  ctx.strokeStyle="#0008"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(64,143); ctx.lineTo(150,143); ctx.moveTo(107,112); ctx.lineTo(107,174); ctx.stroke();
 
-        function updateCard() {
-            const handle = document.getElementById('inputHandle').value;
-            const archetype = document.getElementById('inputArchetype').value;
-            const pfp = document.getElementById('inputPfp').value;
+  // avatar
+  const cx=W-150, cy=238, ar=64;
+  ctx.save(); ctx.beginPath(); ctx.arc(cx,cy,ar,0,7); ctx.clip();
+  if(avatarImg){
+    const s = Math.max(ar*2/avatarImg.width, ar*2/avatarImg.height), w=avatarImg.width*s, h=avatarImg.height*s;
+    ctx.drawImage(avatarImg, cx-w/2, cy-h/2, w, h);
+  } else {
+    ctx.fillStyle = "#1c1810"; ctx.fillRect(cx-ar,cy-ar,ar*2,ar*2);
+    ctx.fillStyle = f.a; ctx.font = "900 68px Unbounded"; ctx.textAlign="center"; ctx.fillText((val("handle")[0]||"T").toUpperCase(), cx, cy+24); ctx.textAlign="left";
+  }
+  ctx.restore();
+  ctx.lineWidth=5; ctx.strokeStyle=f.a; ctx.beginPath(); ctx.arc(cx,cy,ar+8,0,7); ctx.stroke();
 
-            const conviction = document.getElementById('statConviction').value;
-            const luck = document.getElementById('statLuck').value;
-            const leverage = document.getElementById('statLeverage').value;
+  // handle + name
+  const tx = 64+ 0, ty = 380;
+  const hd = "@"+(val("handle")||"anon");
+  const size = fit(hd, W-128, 84, "900 {s}px Unbounded");
+  g = ctx.createLinearGradient(0,ty-size,0,ty); g.addColorStop(0,f.b); g.addColorStop(1,f.a);
+  ctx.fillStyle = g; ctx.font = `900 ${size}px Unbounded`; ctx.fillText(hd, tx, ty);
+  ctx.fillStyle = "#f3ead6"; ctx.font = "italic 400 38px 'Instrument Serif'"; ctx.fillText(val("name")||"Anonymous", tx, ty+48);
+  ctx.fillStyle = f.a+"cc"; ctx.font = "500 16px 'JetBrains Mono'"; ctx.fillText(val("tagline"), tx, ty+82);
+  // rank badge
+  ctx.font = "700 14px 'JetBrains Mono'"; ctx.letterSpacing="4px";
+  const rank = val("tier") || ""; const rw = ctx.measureText(rank).width+36; ctx.letterSpacing="0px";
+  ctx.fillStyle = f.a; ctx.beginPath(); ctx.roundRect(W-64-rw,112,rw,36,18); ctx.fill();
+  ctx.fillStyle="#1a1100"; ctx.font="700 14px 'JetBrains Mono'"; spaced(rank, W-64-rw+18, 136, 4);
 
-            document.getElementById('cardHandle').innerText = handle || '@user';
-            document.getElementById('cardArchetype').innerText = archetype;
-            document.getElementById('cardPfp').src = pfp;
+  // stats
+  const stats=[["REALIZED PNL",val("pnl")],["WIN RATE",val("win")],["TRADES",val("trades")],["RUGS SURVIVED",val("rugs")]];
+  const bw=(W-128-3*16)/4, by=500;
+  stats.forEach((s,i)=>{
+    const x=64+i*(bw+16);
+    ctx.fillStyle="rgba(255,217,138,.06)"; ctx.beginPath(); ctx.roundRect(x,by,bw,92,14); ctx.fill();
+    ctx.strokeStyle=f.a+"44"; ctx.lineWidth=1; ctx.stroke();
+    ctx.fillStyle=f.a+"aa"; ctx.font="500 12px 'JetBrains Mono'"; spaced(s[0],x+18,by+30,3);
+    ctx.fillStyle=f.b; const fs=fit(s[1]||"—",bw-36,34,"900 {s}px Unbounded"); ctx.font=`900 ${fs}px Unbounded`; ctx.fillText(s[1]||"—",x+18,by+72);
+  });
+  // footer
+  ctx.fillStyle=f.a+"99"; ctx.font="500 13px 'JetBrains Mono'";
+  spaced(`SINCE ${val("since")||"----"}  ·  ${CONFIG.chainName.toUpperCase()}  ·  ${account?short(account).toUpperCase():"UNCLAIMED"}`, 64, H-34, 3);
+}
+let raf=0; const redraw=()=>{ cancelAnimationFrame(raf); raf=requestAnimationFrame(draw); };
+document.querySelectorAll("input:not([type=file]),select").forEach(el=>el.addEventListener("input",redraw));
+$("avatar").addEventListener("change", e=>{
+  const file=e.target.files[0]; if(!file) return;
+  const img=new Image(); img.onload=()=>{avatarImg=img;redraw();}; img.src=URL.createObjectURL(file);
+});
+await Promise.all([
+  document.fonts.load("900 40px Unbounded"), document.fonts.load("500 14px 'JetBrains Mono'"),
+  document.fonts.load("700 14px 'JetBrains Mono'"), document.fonts.load("italic 38px 'Instrument Serif'")
+]);
+draw();
 
-            document.getElementById('valConviction').innerText = conviction;
-            document.getElementById('valLuck').innerText = luck;
-            document.getElementById('valLeverage').innerText = leverage;
+/* subtle 3D tilt (desktop) */
+const wrap=$("cardwrap");
+wrap.addEventListener("pointermove",e=>{ if(e.pointerType!=="mouse")return; const r=wrap.getBoundingClientRect();
+  const x=(e.clientX-r.left)/r.width-.5, y=(e.clientY-r.top)/r.height-.5; wrap.style.transform=`rotateY(${x*8}deg) rotateX(${-y*8}deg)`; });
+wrap.addEventListener("pointerleave",()=>wrap.style.transform="");
 
-            document.getElementById('cardStatConviction').innerText = conviction;
-            document.getElementById('cardStatLuck').innerText = luck;
-            document.getElementById('cardStatLeverage').innerText = leverage;
+/* ====== ACTIONS ====== */
+const blobOf = () => new Promise(r=>canvas.toBlob(r,"image/png"));
+$("dlBtn").onclick = async()=>{
+  const b=await blobOf(), a=document.createElement("a");
+  a.href=URL.createObjectURL(b); a.download=`trench-id-${val("handle")||"card"}.png`; a.click();
+  say("Card saved. Attach it to your post on X.");
+};
+$("shareBtn").onclick = async()=>{
+  const text=`My @${val("handle")} Trench ID 🟡 ${val("pnl")} PnL · ${val("rugs")} rugs survived. Mint yours:`;
+  const b=await blobOf(), file=new File([b],"trench-id.png",{type:"image/png"});
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{ await navigator.share({files:[file],text:`${text} ${CONFIG.siteUrl}`}); return; }catch(e){ if(e.name==="AbortError") return; }
+  }
+  open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(CONFIG.siteUrl)}`,"_blank");
+  say("X doesn't accept images from links, so download the PNG and attach it to the post.");
+};
 
-            document.getElementById('barConviction').style.width = conviction + '%';
-            document.getElementById('barLuck').style.width = luck + '%';
-            document.getElementById('barLeverage').style.width = leverage + '%';
-        }
+/* ====== WALLET CONNECT ====== */
+function renderWallets(){
+  $("wl").innerHTML = WALLETS.map(w=>{
+    const has = injected.find(p=>w.match.test(p.info.name));
+    return `<button data-id="${w.id}"><i>${w.name[0]}</i><span>${w.name}<em>${has?"Detected":(isMobile&&w.deep?"Open in app":"WalletConnect")}</em></span></button>`;
+  }).join("");
+  $("wl").querySelectorAll("button").forEach(b=>b.onclick=()=>connect(b.dataset.id));
+}
+const openModal=()=>{ renderWallets(); $("modal").classList.add("open"); };
+const closeModal=()=>$("modal").classList.remove("open");
+$("connectBtn").onclick=$("connectBtn2").onclick=openModal;
+$("closeModal").onclick=closeModal;
+$("modal").onclick=e=>{ if(e.target.id==="modal") closeModal(); };
 
-        function downloadCard() {
-            const cardNode = document.getElementById('cardCanvas');
-            html2canvas(cardNode, { useCORS: true, backgroundColor: '#08080c' }).then(canvas => {
-                const link = document.createElement('a');
-                link.download = 'trench-identity-card.png';
-                link.href = canvas.toDataURL('image/png');
-                link.click();
-            });
-        }
+async function connect(id){
+  const w = WALLETS.find(x=>x.id===id);
+  try{
+    const found = injected.find(p=>w.match.test(p.info.name));
+    if(found){ eip1193 = found.provider; }
+    else if(window.ethereum && isMobile && !w.wc){ eip1193 = window.ethereum; }   // already inside a wallet browser
+    else if(isMobile && w.deep && !window.ethereum){ location.href = w.deep(); return; }
+    else {
+      eip1193 = await EthereumProvider.init({
+        projectId: CONFIG.wcProjectId, chains:[CONFIG.chainId], showQrModal:true,
+        metadata:{name:"TRENCH ID",description:"Identity card minter",url:location.origin,icons:[]}
+      });
+      await eip1193.connect();
+    }
+    const provider = new BrowserProvider(eip1193);
+    await provider.send("eth_requestAccounts",[]);
+    signer = await provider.getSigner(); account = await signer.getAddress();
+    eip1193.on?.("accountsChanged",()=>location.reload()); eip1193.on?.("chainChanged",()=>location.reload());
+    $("walletLabel").innerHTML=`Connected <b>${short(account)}</b>`;
+    $("connectBtn").textContent=short(account); closeModal(); redraw(); say("Wallet connected.");
+  }catch(e){ say(e.shortMessage||e.message||"Connection cancelled.", true); }
+}
 
-        function shareOnX() {
-            const handle = document.getElementById('inputHandle').value;
-            const archetype = document.getElementById('inputArchetype').value;
-            const text = encodeURIComponent(`Just unlocked my official crypto identity card in the trenches. 🛡️\n\nHandle: ${handle}\nClass: ${archetype}\nID: #${randomCardId}\n\nCheck yours here and claim your status 👇`);
-            window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank');
-        }
+async function ensureChain(){
+  const hex="0x"+CONFIG.chainId.toString(16);
+  const cur = await eip1193.request({method:"eth_chainId"});
+  if(cur===hex) return;
+  await eip1193.request({method:"wallet_switchEthereumChain",params:[{chainId:hex}]});
+}
 
-        async function connectWallet() {
-            if (window.ethereum) {
-                try {
-                    const provider = new ethers.BrowserProvider(window.ethereum);
-                    const accounts = await provider.send("eth_requestAccounts", []);
-                    userAddress = accounts[0];
-                    document.getElementById('connectWalletBtn').innerText = userAddress.substring(0, 6) + "..." + userAddress.substring(38);
-                    document.getElementById('cardWallet').innerText = userAddress.substring(0, 6) + "..." + userAddress.substring(38);
-                } catch (err) {
-                    alert("Wallet connection rejected.");
-                }
-            } else {
-                if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-                    window.location.href = `https://metamask.app.link/dapp/${window.location.host}${window.location.pathname}`;
-                } else {
-                    alert("No EVM wallet detected. Please install MetaMask, Coinbase Wallet, or Rabby.");
-                }
-            }
-        }
-
-        async function mintNFT() {
-            if (!userAddress) {
-                await connectWallet();
-                if (!userAddress) return;
-            }
-
-            const handle = document.getElementById('inputHandle').value;
-            const archetype = document.getElementById('inputArchetype').value;
-            const dummyMetadataURI = "ipfs://QmYourMetadataHash/metadata.json";
-            const nonce = Date.now();
-
-            try {
-                document.getElementById('mintBtn').innerText = "FETCHING SIGNATURE...";
-
-                const response = await fetch('/api/get-mint-signature', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ to: userAddress, handle, archetype, tokenURI: dummyMetadataURI, nonce })
-                });
-
-                const data = await response.json();
-                if (!data.signature) {
-                    alert("Failed to get backend signature.");
-                    document.getElementById('mintBtn').innerText = "MINT EVM NFT ($0 GAS VOUCHER)";
-                    return;
-                }
-
-                document.getElementById('mintBtn').innerText = "CONFIRMING ON-CHAIN...";
-
-                const provider = new ethers.BrowserProvider(window.ethereum);
-                const signer = await provider.getSigner();
-                const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-
-                const tx = await contract.mintCard(userAddress, handle, archetype, dummyMetadataURI, nonce, data.signature);
-                await tx.wait();
-
-                document.getElementById('mintStatusText').innerText = "VERIFIED ON-CHAIN NFT";
-                alert("SUCCESS! Your Identity Card NFT has been minted permanently.");
-                document.getElementById('mintBtn').innerText = "MINTED ✓";
-
-            } catch (err) {
-                console.error(err);
-                alert("Transaction failed or rejected.");
-                document.getElementById('mintBtn').innerText = "MINT EVM NFT ($0 GAS VOUCHER)";
-            }
-        }
-    </script>
+/* ====== LAZY MINT (EIP-712 voucher → redeem) ====== */
+$("mintBtn").onclick = async()=>{
+  const btn=$("mintBtn");
+  try{
+    if(!signer){ openModal(); return; }
+    btn.disabled=true; await ensureChain();
+    say("Signing your voucher off-chain…");
+    const image = canvas.toDataURL("image/png");
+    const r = await fetch(CONFIG.api,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+      address: account, image,
+      attrs:{ handle:val("handle"), name:val("name"), tagline:val("tagline"), rank:val("tier"), foil:val("foil"),
+              pnl:val("pnl"), winRate:val("win"), trades:val("trades"), rugs:val("rugs"), since:val("since") }
+    })});
+    const data = await r.json();
+    if(!r.ok) throw new Error(data.error||"Voucher request failed");
+    say("Confirm the mint in your wallet…");
+    const c = new Contract(CONFIG.contract, ABI, signer);
+    const tx = await c.redeem(data.voucher, data.signature, { value: data.price });
+    say(`Minting… <a target="_blank" rel="noopener" href="${CONFIG.explorer}/tx/${tx.hash}">view transaction</a>`);
+    await tx.wait();
+    say(`Minted. Your Trench ID is yours. <a target="_blank" rel="noopener" href="${CONFIG.explorer}/tx/${tx.hash}">view transaction</a>`);
+  }catch(e){ say(e.shortMessage||e.reason||e.message||"Mint failed.", true); }
+  finally{ btn.disabled=false; }
+};
+</script>
 </body>
 </html>

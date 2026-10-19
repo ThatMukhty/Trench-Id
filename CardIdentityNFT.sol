@@ -1,88 +1,90 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import {ERC721} from "@openzeppelin/contracts@5.0.2/token/ERC721/ERC721.sol";
+import {ERC721URIStorage} from "@openzeppelin/contracts@5.0.2/token/ERC721/extensions/ERC721URIStorage.sol";
+import {EIP712} from "@openzeppelin/contracts@5.0.2/utils/cryptography/EIP712.sol";
+import {ECDSA} from "@openzeppelin/contracts@5.0.2/utils/cryptography/ECDSA.sol";
+import {Ownable} from "@openzeppelin/contracts@5.0.2/access/Ownable.sol";
 
-/**
- * @title CardIdentityNFT
- * @dev ERC721 token that verifies EIP-712 signatures before allowing users to mint their Identity Card.
- */
-contract CardIdentityNFT is ERC721, ERC721URIStorage, Ownable, EIP712 {
-    using ECDSA for bytes32;
+/// @title CardIdentityNFT
+/// @notice Trench identity cards, lazily minted. The creator signs an EIP-712
+///         voucher off-chain ($0 gas). The holder redeems it on-chain and pays
+///         only their own mint gas (+ optional mint price).
+contract CardIdentityNFT is ERC721URIStorage, EIP712, Ownable {
+    struct Voucher {
+        address minter;   // wallet allowed to redeem
+        string uri;       // ipfs:// metadata URI
+        uint256 nonce;    // unique per voucher
+        uint256 deadline; // unix seconds
+    }
 
-    uint256 private _nextTokenId;
-    address public signerAddress; // Backend or admin signer address
+    bytes32 private constant VOUCHER_TYPEHASH =
+        keccak256("Voucher(address minter,string uri,uint256 nonce,uint256 deadline)");
 
-    bytes32 private constant MINT_TYPEHASH = keccak256(
-        "NFTCard(address to,string handle,string archetype,string tokenURI,uint256 nonce)"
-    );
+    address public voucherSigner;
+    uint256 public mintPrice;
+    uint256 public maxPerWallet = 1;
+    uint256 public totalMinted;
 
-    mapping(uint256 => bool) public usedNonces;
+    mapping(uint256 => bool) public nonceUsed;
+    mapping(address => uint256) public mintedBy;
 
-    event CardMinted(address indexed minter, uint256 indexed tokenId, string handle, string archetype);
+    event Redeemed(address indexed minter, uint256 indexed tokenId, uint256 nonce);
+    event SignerUpdated(address signer);
+    event PriceUpdated(uint256 price);
 
-    constructor(address _signer) 
-        ERC721("Trench Identity Card", "TRENCH") 
-        EIP712("TrenchIdentity", "1") 
-        Ownable(msg.sender) 
+    error BadSigner();
+    error NotMinter();
+    error Expired();
+    error NonceUsed();
+    error WalletLimit();
+    error WrongPayment();
+    error WithdrawFailed();
+
+    constructor(address signer_, uint256 mintPrice_)
+        ERC721("Trench Identity Card", "TRENCHID")
+        EIP712("CardIdentityNFT", "1")
+        Ownable(msg.sender)
     {
-        signerAddress = _signer;
+        voucherSigner = signer_;
+        mintPrice = mintPrice_;
     }
 
-    function setSignerAddress(address _signer) external onlyOwner {
-        signerAddress = _signer;
+    function redeem(Voucher calldata v, bytes calldata signature)
+        external
+        payable
+        returns (uint256 tokenId)
+    {
+        if (v.minter != msg.sender) revert NotMinter();
+        if (block.timestamp > v.deadline) revert Expired();
+        if (nonceUsed[v.nonce]) revert NonceUsed();
+        if (mintedBy[msg.sender] >= maxPerWallet) revert WalletLimit();
+        if (msg.value != mintPrice) revert WrongPayment();
+        if (ECDSA.recover(hashVoucher(v), signature) != voucherSigner) revert BadSigner();
+
+        nonceUsed[v.nonce] = true;
+        mintedBy[msg.sender] += 1;
+        tokenId = ++totalMinted;
+
+        _safeMint(msg.sender, tokenId);
+        _setTokenURI(tokenId, v.uri);
+        emit Redeemed(msg.sender, tokenId, v.nonce);
     }
 
-    /**
-     * @dev Mint an Identity Card NFT using a valid EIP-712 signature.
-     */
-    function mintCard(
-        address to,
-        string calldata handle,
-        string calldata archetype,
-        string calldata uri,
-        uint256 nonce,
-        bytes calldata signature
-    ) external payable {
-        require(!usedNonces[nonce], "Nonce already used");
-        require(msg.sender == to, "Can only mint to self");
-
-        // Verify EIP-712 Signature
-        bytes32 structHash = keccak256(
-            abi.encode(
-                MINT_TYPEHASH,
-                to,
-                keccak256(bytes(handle)),
-                keccak256(bytes(archetype)),
-                keccak256(bytes(uri)),
-                nonce
-            )
+    function hashVoucher(Voucher calldata v) public view returns (bytes32) {
+        return _hashTypedDataV4(
+            keccak256(abi.encode(VOUCHER_TYPEHASH, v.minter, keccak256(bytes(v.uri)), v.nonce, v.deadline))
         );
-
-        bytes32 digest = _hashTypedDataV4(structHash);
-        address recoveredSigner = ECDSA.recover(digest, signature);
-        require(recoveredSigner == signerAddress, "Invalid signature");
-
-        // Execute Mint
-        usedNonces[nonce] = true;
-        uint256 tokenId = ++_nextTokenId;
-
-        _safeMint(to, tokenId);
-        _setTokenURI(tokenId, uri);
-
-        emit CardMinted(to, tokenId, handle, archetype);
     }
 
-    // Standard Overrides
-    function tokenURI(uint256 tokenId) public view override(ERC721, ERC721URIStorage) returns (string memory) {
-        return super.tokenURI(tokenId);
-    }
+    // ---- owner controls ----
+    function setSigner(address s) external onlyOwner { voucherSigner = s; emit SignerUpdated(s); }
+    function setMintPrice(uint256 p) external onlyOwner { mintPrice = p; emit PriceUpdated(p); }
+    function setMaxPerWallet(uint256 m) external onlyOwner { maxPerWallet = m; }
 
-    function supportsInterface(bytes4 interfaceId) public view override(ERC721, ERC721URIStorage) returns (bool) {
-        return super.supportsInterface(interfaceId);
+    function withdraw() external onlyOwner {
+        (bool ok, ) = payable(owner()).call{value: address(this).balance}("");
+        if (!ok) revert WithdrawFailed();
     }
 }

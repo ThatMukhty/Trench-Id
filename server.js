@@ -1,55 +1,88 @@
-// server.js
-const express = require('express');
-const { ethers } = require('ethers');
-const app = express();
+// Vercel serverless function: POST /api/voucher
+// Pins the card image + metadata to IPFS (Pinata) and returns an EIP-712 signed voucher.
+// Required environment variables (set in your Vercel project settings):
+//   SIGNER_PRIVATE_KEY  - key of the wallet set as voucherSigner in the contract (use a dedicated wallet!)
+//   PINATA_JWT          - Pinata API token
+//   CHAIN_ID            - e.g. 1 (mainnet) or 11155111 (Sepolia)
+//   CONTRACT_ADDRESS    - deployed CardIdentityNFT address
+//   MINT_PRICE_WEI      - must equal the contract's mintPrice (0 for free)
 
-app.use(express.json());
+import { Wallet, getAddress, hexlify, randomBytes } from "ethers";
 
-// Set your backend wallet private key in Vercel Environment Variables
-const SIGNER_PRIVATE_KEY = process.env.SIGNER_PRIVATE_KEY || "0xYOUR_SIGNER_PRIVATE_KEY_HERE"; 
-const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || "0xYOUR_DEPLOYED_CONTRACT_ADDRESS";
-const CHAIN_ID = 1; // 1 for Ethereum Mainnet, 11155111 for Sepolia
+const TYPES = {
+  Voucher: [
+    { name: "minter", type: "address" },
+    { name: "uri", type: "string" },
+    { name: "nonce", type: "uint256" },
+    { name: "deadline", type: "uint256" }
+  ]
+};
 
-app.post('/api/get-mint-signature', async (req, res) => {
-    try {
-        const { to, handle, archetype, tokenURI, nonce } = req.body;
+const clean = (v, max = 60) => String(v ?? "").replace(/[<>]/g, "").slice(0, max);
 
-        if (!to || !handle || !archetype) {
-            return res.status(400).json({ error: "Missing required card fields." });
-        }
+async function pinata(path, init) {
+  const r = await fetch(`https://api.pinata.cloud/pinning/${path}`, {
+    ...init,
+    headers: { Authorization: `Bearer ${process.env.PINATA_JWT}`, ...(init.headers || {}) }
+  });
+  if (!r.ok) throw new Error(`IPFS pin failed (${r.status})`);
+  return (await r.json()).IpfsHash;
+}
 
-        const wallet = new ethers.Wallet(SIGNER_PRIVATE_KEY);
+export default async function handler(req, res) {
+  if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
+  try {
+    const { address, image, attrs = {} } = req.body || {};
+    const minter = getAddress(address);
 
-        // EIP-712 Domain Separator
-        const domain = {
-            name: "TrenchIdentity",
-            version: "1",
-            chainId: CHAIN_ID,
-            verifyingContract: CONTRACT_ADDRESS
-        };
+    const m = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(image || "");
+    if (!m) return res.status(400).json({ error: "Invalid image" });
+    const png = Buffer.from(m[1], "base64");
+    if (png.length > 3_000_000) return res.status(413).json({ error: "Image too large" });
 
-        // EIP-712 Struct Types
-        const types = {
-            NFTCard: [
-                { name: "to", type: "address" },
-                { name: "handle", type: "string" },
-                { name: "archetype", type: "string" },
-                { name: "tokenURI", type: "string" },
-                { name: "nonce", type: "uint256" }
-            ]
-        };
+    // 1) pin image
+    const form = new FormData();
+    form.append("file", new Blob([png], { type: "image/png" }), "trench-id.png");
+    const imgCid = await pinata("pinFileToIPFS", { method: "POST", body: form });
 
-        const value = { to, handle, archetype, tokenURI, nonce };
+    // 2) pin metadata
+    const metadata = {
+      name: `Trench ID — @${clean(attrs.handle, 20)}`,
+      description: clean(attrs.tagline, 80) || "Trench identity card.",
+      image: `ipfs://${imgCid}`,
+      attributes: [
+        { trait_type: "Rank", value: clean(attrs.rank) },
+        { trait_type: "Foil", value: clean(attrs.foil) },
+        { trait_type: "Realized PnL", value: clean(attrs.pnl) },
+        { trait_type: "Win Rate", value: clean(attrs.winRate) },
+        { trait_type: "Trades", value: clean(attrs.trades) },
+        { trait_type: "Rugs Survived", value: clean(attrs.rugs) },
+        { trait_type: "Since", value: clean(attrs.since, 4) }
+      ]
+    };
+    const metaCid = await pinata("pinJSONToIPFS", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pinataContent: metadata })
+    });
 
-        // Generate cryptographic signature
-        const signature = await wallet.signTypedData(domain, types, value);
+    // 3) sign voucher (EIP-712)
+    const voucher = {
+      minter,
+      uri: `ipfs://${metaCid}`,
+      nonce: BigInt(hexlify(randomBytes(32))).toString(),
+      deadline: Math.floor(Date.now() / 1000) + 3600
+    };
+    const domain = {
+      name: "CardIdentityNFT",
+      version: "1",
+      chainId: Number(process.env.CHAIN_ID),
+      verifyingContract: process.env.CONTRACT_ADDRESS
+    };
+    const signature = await new Wallet(process.env.SIGNER_PRIVATE_KEY).signTypedData(domain, TYPES, voucher);
 
-        res.json({ signature, nonce });
-    } catch (err) {
-        console.error("Signature Error:", err);
-        res.status(500).json({ error: "Failed to generate EIP-712 signature" });
-    }
-});
-
-// Export app for Vercel Serverless Function engine
-module.exports = app;
+    return res.status(200).json({ voucher, signature, price: process.env.MINT_PRICE_WEI || "0" });
+  } catch (e) {
+    return res.status(500).json({ error: e.message || "Server error" });
+  }
+}
