@@ -1,0 +1,8 @@
+{
+  "name": "trench-id",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "ethers": "6.13.4"
+  }
+}

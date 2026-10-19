@@ -1,8 +1,9 @@
 {
-  "name": "trench-id",
-  
-  "type": "module",
-  "dependencies": {
-    "ethers": "6.13.4"
-  }
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/"
+    }
+  ]
 }
