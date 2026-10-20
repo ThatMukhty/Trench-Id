@@ -1,6 +1,0 @@
-{
-  "rewrites": [
-    { "source": "/server", "destination": "/server.js" },
-    { "source": "/((?!server).*)", "destination": "/index.html" }
-  ]
-}
