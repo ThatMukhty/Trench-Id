@@ -1,9 +1,7 @@
 {
   "name": "trench-id",
   "version": "1.0.0",
-  "description": "Identity Card Minter",
   "type": "module",
-  "main": "server.js",
   "dependencies": {
     "ethers": "^6.13.4"
   }
