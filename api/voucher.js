@@ -10,7 +10,7 @@ const TYPES = {
 };
 
 export default async function handler(req) {
-  // Handle CORS Preflight
+  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 204,
@@ -25,31 +25,35 @@ export default async function handler(req) {
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
     });
   }
 
   try {
     const body = await req.json();
-    const { minter, uri } = body;
+    const { address: minter, image, attrs } = body;
 
-    if (!minter || !uri) {
-      return new Response(JSON.stringify({ error: "Missing minter or uri" }), {
+    if (!minter) {
+      return new Response(JSON.stringify({ error: "Missing minter address" }), {
         status: 400,
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
       });
     }
 
     const privateKey = process.env.SIGNER_PRIVATE_KEY;
-    const chainId = process.env.CHAIN_ID || 1; // Default to Ethereum Mainnet
+    const chainId = process.env.CHAIN_ID || 1;
     const contractAddress = process.env.CONTRACT_ADDRESS;
 
     if (!privateKey || !contractAddress) {
-      return new Response(JSON.stringify({ error: "Server environment misconfigured" }), {
+      return new Response(JSON.stringify({ error: "Server environment variables (SIGNER_PRIVATE_KEY or CONTRACT_ADDRESS) are missing." }), {
         status: 500,
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
       });
     }
+
+    // In a full production setup, you can pin `image` or `attrs` to IPFS here.
+    // For this voucher workflow, we construct the URI payload.
+    const uri = "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"; // Placeholder or generated metadata URI
 
     const wallet = new Wallet(privateKey);
     const domain = {
@@ -60,7 +64,7 @@ export default async function handler(req) {
     };
 
     const nonce = hexlify(randomBytes(32));
-    const deadline = Math.floor(Date.now() / 1000) + 3600; // 1 hour validity
+    const deadline = Math.floor(Date.now() / 1000) + 3600; // valid for 1 hour
 
     const value = {
       minter: getAddress(minter),
@@ -73,7 +77,8 @@ export default async function handler(req) {
 
     return new Response(
       JSON.stringify({
-        voucher: { minter: value.minter, uri, nonce, deadline, signature }
+        voucher: { minter: value.minter, uri, nonce, deadline, signature },
+        price: process.env.MINT_PRICE_WEI || "0"
       }),
       {
         status: 200,
@@ -83,10 +88,13 @@ export default async function handler(req) {
         },
       }
     );
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message || "Internal server error" }), {
+  } catch (e) {
+    return new Response(JSON.stringify({ error: e.message || "Server error" }), {
       status: 500,
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+      },
     });
   }
 }
