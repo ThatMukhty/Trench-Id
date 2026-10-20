@@ -10,27 +10,36 @@ const TYPES = {
 };
 
 export default async function handler(req, res) {
+  // Handle CORS preflight
   if (req.method === "OPTIONS") {
-    return res.status(204).setHeader("Access-Control-Allow-Origin", "*").end();
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    return res.status(204).end();
   }
+
+  res.setHeader("Access-Control-Allow-Origin", "*");
 
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    const { minter, uri } = req.body;
+    const { minter } = req.body || {};
 
-    if (!minter || !uri) {
-      return res.status(400).json({ error: "Missing minter or uri" });
+    if (!minter) {
+      return res.status(400).json({ error: "Missing minter address" });
     }
 
     const privateKey = process.env.SIGNER_PRIVATE_KEY;
     const chainId = process.env.CHAIN_ID || 1;
     const contractAddress = process.env.CONTRACT_ADDRESS;
 
+    // If variables aren't set yet, return a graceful warning instead of a 500 crash
     if (!privateKey || !contractAddress) {
-      return res.status(500).json({ error: "Server environment misconfigured" });
+      return res.status(500).json({ 
+        error: "Contract or Signer environment variables are not configured on Vercel yet." 
+      });
     }
 
     const wallet = new Wallet(privateKey);
@@ -43,6 +52,7 @@ export default async function handler(req, res) {
 
     const nonce = hexlify(randomBytes(32));
     const deadline = Math.floor(Date.now() / 1000) + 3600;
+    const uri = "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi";
 
     const value = {
       minter: getAddress(minter),
@@ -58,6 +68,6 @@ export default async function handler(req, res) {
       price: process.env.MINT_PRICE_WEI || "0"
     });
   } catch (e) {
-    return res.status(500).json({ error: e.message || "Server error" });
+    return res.status(500).json({ error: e.message || "Server execution error" });
   }
 }
