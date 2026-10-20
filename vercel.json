@@ -5,7 +5,7 @@
     { "src": "index.html", "use": "@vercel/static" }
   ],
   "routes": [
-    { "src": "/api/voucher", "dest": "/server.js" },
+    { "src": "/api/voucher", "dest": "/voucher.js" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }

@@ -62,12 +62,14 @@ export default async function handler(req, res) {
     };
 
     const signature = await wallet.signTypedData(domain, TYPES, value);
-
-    return res.status(200).json({
-      voucher: { minter: value.minter, uri, nonce, deadline, signature },
-      price: process.env.MINT_PRICE_WEI || "0"
-    });
-  } catch (e) {
-    return res.status(500).json({ error: e.message || "Server execution error" });
-  }
-}
+return res.status(200).json({
+  voucher: { 
+    minter: value.minter, 
+    uri, 
+    nonce, 
+    deadline 
+    // remove signature from inside here
+  },
+  signature: signature, // send it here separately
+  price: process.env.MINT_PRICE_WEI || "0"
+});
