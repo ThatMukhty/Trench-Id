@@ -363,8 +363,8 @@ $("mintBtn").onclick = async()=>{
     btn.disabled=true; await ensureChain();
     say("Signing your voucher off-chain…");
     const image = canvas.toDataURL("image/png");
-    const r = await fetch(CONFIG.api,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
-      address: account, image,
+   const r = await fetch(CONFIG.api,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+      minter: account, image,
       attrs:{ handle:val("handle"), name:val("name"), tagline:val("tagline"), rank:val("tier"), foil:val("foil"),
               pnl:val("pnl"), winRate:val("win"), trades:val("trades"), rugs:val("rugs"), since:val("since") }
     })});
