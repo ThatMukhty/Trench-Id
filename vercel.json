@@ -1,7 +1,7 @@
 {
   "version": 2,
   "routes": [
-    { "src": "/api/voucher", "dest": "/voucher.js" },
+    { "src": "/api/voucher", "dest": "/api/voucher.js" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
