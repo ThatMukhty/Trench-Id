@@ -1,9 +1,9 @@
 {
-  "name": "trenchid",
+  "name": "trench-id",
   "version": "1.0.0",
+  "description": "Trench ID EVM Minter",
   "type": "module",
-  "main": "api/voucher.js",
   "dependencies": {
-    "ethers": "^6.0.0"
+    "ethers": "^6.13.4"
   }
 }

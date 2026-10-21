@@ -1,7 +1,3 @@
 {
-  "version": 2,
-  "rewrites": [
-    { "source": "/api/voucher", "destination": "/api/voucher.js" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
-  ]
+  "version": 2
 }

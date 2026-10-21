@@ -62,6 +62,9 @@ export async function POST(req) {
 
     const nonce = hexlify(randomBytes(32));
     const deadline = Math.floor(Date.now() / 1000) + 3600;
+    
+    // In production, you can pin the incoming card image or attributes JSON to IPFS here.
+    // For now, it passes a placeholder URI or data reference.
     const uri = "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi";
 
     const value = {
