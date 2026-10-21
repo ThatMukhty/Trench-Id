@@ -1,7 +1,6 @@
 {
   "version": 2,
-  "routes": [
-    { "src": "/api/voucher", "dest": "/api/voucher.js" },
-    { "src": "/(.*)", "dest": "/index.html" }
+  "rewrites": [
+    { "source": "/api/voucher", "destination": "/api/voucher.js" }
   ]
 }
