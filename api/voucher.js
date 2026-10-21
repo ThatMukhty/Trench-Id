@@ -1,4 +1,4 @@
-const { Wallet, getAddress, hexlify, randomBytes } = require("ethers");
+import { Wallet, getAddress, hexlify, randomBytes } from "ethers";
 
 const TYPES = {
   Voucher: [
@@ -9,7 +9,7 @@ const TYPES = {
   ]
 };
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     res.setHeader("Access-Control-Allow-Origin", "*");
@@ -75,4 +75,4 @@ module.exports = async function handler(req, res) {
   } catch (e) {
     return res.status(500).json({ error: e.message || "Server execution error" });
   }
-};
+}
