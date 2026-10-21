@@ -1,4 +1,4 @@
-import { Wallet, getAddress, hexlify, randomBytes } from "ethers";
+const { Wallet, getAddress, hexlify, randomBytes } = require("ethers");
 
 const TYPES = {
   Voucher: [
@@ -9,7 +9,7 @@ const TYPES = {
   ]
 };
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     res.setHeader("Access-Control-Allow-Origin", "*");
@@ -35,7 +35,6 @@ export default async function handler(req, res) {
     const chainId = process.env.CHAIN_ID || 1;
     const contractAddress = process.env.CONTRACT_ADDRESS;
 
-    // If variables aren't set yet, return a graceful warning instead of a 500 crash
     if (!privateKey || !contractAddress) {
       return res.status(500).json({ 
         error: "Contract or Signer environment variables are not configured on Vercel yet." 
@@ -76,4 +75,4 @@ export default async function handler(req, res) {
   } catch (e) {
     return res.status(500).json({ error: e.message || "Server execution error" });
   }
-}
+};
