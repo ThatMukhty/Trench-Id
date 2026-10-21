@@ -9,26 +9,46 @@ const TYPES = {
   ]
 };
 
-export default async function handler(req, res) {
+export default async function handler(req) {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-    return res.status(204).end();
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type"
+      }
+    });
   }
 
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": "*",
+    "Content-Type": "application/json"
+  };
 
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
+      headers: corsHeaders
+    });
   }
 
   try {
-    const { minter } = req.body || {};
+    let body = {};
+    try {
+      body = await req.json();
+    } catch {
+      // fallback if body is empty
+    }
+
+    const { minter } = body;
 
     if (!minter) {
-      return res.status(400).json({ error: "Missing minter address" });
+      return new Response(JSON.stringify({ error: "Missing minter address" }), {
+        status: 400,
+        headers: corsHeaders
+      });
     }
 
     const privateKey = process.env.SIGNER_PRIVATE_KEY;
@@ -36,9 +56,10 @@ export default async function handler(req, res) {
     const contractAddress = process.env.CONTRACT_ADDRESS;
 
     if (!privateKey || !contractAddress) {
-      return res.status(500).json({ 
-        error: "Contract or Signer environment variables are not configured on Vercel yet." 
-      });
+      return new Response(
+        JSON.stringify({ error: "Contract or Signer environment variables are not configured on Vercel yet." }),
+        { status: 500, headers: corsHeaders }
+      );
     }
 
     const wallet = new Wallet(privateKey);
@@ -61,18 +82,24 @@ export default async function handler(req, res) {
     };
 
     const signature = await wallet.signTypedData(domain, TYPES, value);
-    
-    return res.status(200).json({
-      voucher: { 
-        minter: value.minter, 
-        uri, 
-        nonce, 
-        deadline 
-      },
-      signature: signature,
-      price: process.env.MINT_PRICE_WEI || "0"
-    });
+
+    return new Response(
+      JSON.stringify({
+        voucher: {
+          minter: value.minter,
+          uri,
+          nonce,
+          deadline
+        },
+        signature: signature,
+        price: process.env.MINT_PRICE_WEI || "0"
+      }),
+      { status: 200, headers: corsHeaders }
+    );
   } catch (e) {
-    return res.status(500).json({ error: e.message || "Server execution error" });
+    return new Response(
+      JSON.stringify({ error: e.message || "Server execution error" }),
+      { status: 500, headers: corsHeaders }
+    );
   }
 }
