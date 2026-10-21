@@ -1,8 +1,7 @@
 {
-  "name": "trench-id",
+  "name": "trenchid-dapp",
   "version": "1.0.0",
-  "description": "Trench ID EVM Minter",
-  "type": "module",
+  "private": true,
   "dependencies": {
     "ethers": "^6.13.4"
   }
