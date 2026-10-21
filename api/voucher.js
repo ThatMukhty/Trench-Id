@@ -72,9 +72,8 @@ export default async function handler(req, res) {
       },
       signature: signature,
       price: process.env.MINT_PRICE_WEI || "0"
- } catch (e) {
-    return res.status(500).json({ 
-      error: e.message, 
-      stack: e.stack 
     });
+  } catch (e) {
+    return res.status(500).json({ error: e.message || "Server execution error" });
   }
+}
